@@ -123,9 +123,11 @@ docker build -f webapp/Dockerfile -t cribl-weight-calculator .
 docker run -d --name cribl-weight-calculator -p 8080:8080 --restart unless-stopped cribl-weight-calculator
 ```
 
-Change the host port by editing the left side of `ports:` in
-[`compose.yaml`](compose.yaml) (or `-p <host>:8080`). The container port can be
-overridden with the `PORT` environment variable.
+If 8080 is taken on your host (on Windows, the IP Helper service often holds
+it), set `HOST_PORT`: `HOST_PORT=8081 docker compose up -d` (PowerShell:
+`$env:HOST_PORT='8081'; docker compose up -d`), or use `-p <host>:8080` with
+`docker run`. The container-internal port can be overridden with the `PORT`
+environment variable.
 
 The UI has two modes matching the CLI: **Weights → Split** (with optional total
 throughput and unit) and **Split → Weights** (reverse derivation).
