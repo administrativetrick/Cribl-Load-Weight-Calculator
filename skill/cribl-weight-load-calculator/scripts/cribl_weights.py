@@ -24,9 +24,9 @@ def parse_weight(text, label="weight"):
     try:
         value = float(text)
     except ValueError:
-        raise SystemExit(f"error: {label} '{text}' is not a number")
+        raise ValueError(f"{label} '{text}' is not a number")
     if value < 0:
-        raise SystemExit(f"error: {label} '{text}' is negative; Cribl Load Weights must be >= 0")
+        raise ValueError(f"{label} '{text}' is negative; Cribl Load Weights must be >= 0")
     return value
 
 
@@ -35,7 +35,7 @@ def parse_nodes(pairs):
     for pair in pairs:
         name, sep, weight = pair.partition("=")
         if not sep or not name:
-            raise SystemExit(f"error: expected name=weight, got '{pair}'")
+            raise ValueError(f"expected name=weight, got '{pair}'")
         nodes.append((name, parse_weight(weight, f"weight for {name}")))
     return nodes
 
@@ -43,7 +43,7 @@ def parse_nodes(pairs):
 def distribute(nodes, total=None):
     total_weight = sum(w for _, w in nodes)
     if total_weight == 0:
-        raise SystemExit("error: all weights are zero; at least one receiver needs a positive weight")
+        raise ValueError("all weights are zero; at least one receiver needs a positive weight")
     rows = []
     for name, weight in nodes:
         share = weight / total_weight
@@ -56,12 +56,15 @@ def distribute(nodes, total=None):
 
 def smallest_integer_weights(percent_strings):
     """Reduce desired percentages to the smallest exact integer weight ratio."""
-    fracs = [Fraction(p) for p in percent_strings]
+    try:
+        fracs = [Fraction(str(p)) for p in percent_strings]
+    except (ValueError, ZeroDivisionError):
+        raise ValueError("percentages must be numbers")
     if any(f < 0 for f in fracs):
-        raise SystemExit("error: percentages must be >= 0")
+        raise ValueError("percentages must be >= 0")
     total = sum(fracs)
     if total == 0:
-        raise SystemExit("error: percentages sum to zero")
+        raise ValueError("percentages sum to zero")
     shares = [f / total for f in fracs]
     common = reduce(lambda a, b: a * b // gcd(a, b), (s.denominator for s in shares))
     weights = [int(s * common) for s in shares]
@@ -168,4 +171,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        sys.exit(1)

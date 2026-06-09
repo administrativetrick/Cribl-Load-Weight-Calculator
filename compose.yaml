@@ -1,0 +1,11 @@
+services:
+  cribl-weight-calculator:
+    build:
+      context: .
+      dockerfile: webapp/Dockerfile
+    image: cribl-weight-calculator
+    container_name: cribl-weight-calculator
+    ports:
+      # host:container — change the left side if 8080 is taken on your host
+      - "8080:8080"
+    restart: unless-stopped

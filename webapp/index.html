@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cribl Weight Load Calculator</title>
+<style>
+  :root {
+    --accent: #fa6400;
+    --bg: #f6f7f9; --card: #ffffff; --text: #1c2430; --muted: #5b6675;
+    --border: #d8dde5; --bar-bg: #edf0f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161d; --card: #1b212b; --text: #e8ecf2; --muted: #95a0af;
+      --border: #2c3542; --bar-bg: #242c38;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; font-size: .95rem; }
+  .sub code { font-size: .85rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.25rem; margin-bottom: 1.25rem;
+  }
+  .tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; }
+  .tabs button {
+    flex: 1; padding: .6rem; border: 1px solid var(--border); background: var(--card);
+    color: var(--text); border-radius: 8px; font-size: .95rem; cursor: pointer;
+  }
+  .tabs button.active { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .row { display: flex; gap: .5rem; margin-bottom: .5rem; align-items: center; }
+  .row input { min-width: 0; }
+  input {
+    padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--bg); color: var(--text); font-size: .95rem;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+  .name { flex: 2; } .weight { flex: 1; }
+  .icon-btn {
+    border: 1px solid var(--border); background: none; color: var(--muted);
+    border-radius: 7px; width: 2.2rem; height: 2.2rem; font-size: 1.1rem; cursor: pointer;
+  }
+  .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .actions { display: flex; gap: .5rem; margin-top: .85rem; flex-wrap: wrap; }
+  .btn {
+    padding: .55rem 1rem; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font-size: .95rem; cursor: pointer;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .totals { display: flex; gap: .5rem; margin-top: .85rem; flex-wrap: wrap; }
+  .totals input { flex: 1; }
+  label { font-size: .85rem; color: var(--muted); display: block; margin-bottom: .25rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+  th, td { text-align: left; padding: .45rem .5rem; border-bottom: 1px solid var(--border); font-size: .95rem; }
+  th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { background: var(--bar-bg); border-radius: 4px; height: 10px; overflow: hidden; min-width: 80px; }
+  .bar > div { background: var(--accent); height: 100%; border-radius: 4px; }
+  .error { color: #d4452c; margin-top: .75rem; font-size: .95rem; }
+  .note { color: var(--muted); margin-top: .75rem; font-size: .9rem; }
+  .result-big { font-size: 1.35rem; font-weight: 700; margin-top: .75rem; }
+  footer { color: var(--muted); font-size: .85rem; margin-top: 1.5rem; text-align: center; }
+  footer a { color: var(--accent); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cribl Weight Load Calculator</h1>
+  <p class="sub">Cribl Stream load balancing sends each receiver
+    <code>weight&nbsp;/&nbsp;sum(weights)</code> of the traffic.
+    Enter your Load Weights to see the split, or flip the mode to derive
+    weights from a desired split.</p>
+
+  <div class="tabs">
+    <button id="tab-forward" class="active" onclick="showTab('forward')">Weights → Split</button>
+    <button id="tab-reverse" onclick="showTab('reverse')">Split → Weights</button>
+  </div>
+
+  <section id="pane-forward" class="card">
+    <div id="rows"></div>
+    <div class="actions">
+      <button class="btn" onclick="addRow()">+ Add receiver</button>
+    </div>
+    <div class="totals">
+      <div style="flex:2">
+        <label for="total">Total throughput (optional)</label>
+        <input id="total" type="number" min="0" step="any" placeholder="e.g. 300" style="width:100%">
+      </div>
+      <div style="flex:2">
+        <label for="unit">Unit label</label>
+        <input id="unit" placeholder="e.g. events/sec, GB/day" style="width:100%">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" onclick="calculate()">Calculate distribution</button>
+    </div>
+    <div id="fwd-error" class="error hidden"></div>
+    <div id="fwd-result" class="hidden">
+      <table>
+        <thead>
+          <tr><th>Receiver</th><th class="num">Weight</th><th class="num">Share</th>
+              <th class="num load-col">Load</th><th style="width:30%"></th></tr>
+        </thead>
+        <tbody id="fwd-tbody"></tbody>
+      </table>
+      <div id="fwd-note" class="note hidden"></div>
+    </div>
+  </section>
+
+  <section id="pane-reverse" class="card hidden">
+    <p class="note" style="margin-top:0">Enter the percentage of traffic each receiver
+      should get (they don't have to sum to exactly 100 — values are normalized).</p>
+    <div id="pct-rows"></div>
+    <div class="actions">
+      <button class="btn" onclick="addPctRow()">+ Add receiver</button>
+      <button class="btn primary" onclick="fromPercent()">Derive weights</button>
+    </div>
+    <div id="rev-error" class="error hidden"></div>
+    <div id="rev-result" class="hidden">
+      <div class="result-big" id="rev-weights"></div>
+      <div id="rev-note" class="note hidden"></div>
+    </div>
+  </section>
+
+  <footer>
+    Per <a href="https://docs.cribl.io/stream/load-balancing/#lb" target="_blank" rel="noopener">Cribl Stream load-balancing docs</a>.
+    Weight 0 = Cribl opens no connections to that receiver.
+  </footer>
+</main>
+
+<script>
+function el(tag, attrs, parent) {
+  const node = document.createElement(tag);
+  Object.assign(node, attrs || {});
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+function showTab(which) {
+  for (const t of ['forward', 'reverse']) {
+    document.getElementById('tab-' + t).classList.toggle('active', t === which);
+    document.getElementById('pane-' + t).classList.toggle('hidden', t !== which);
+  }
+}
+
+function addRow(name, weight) {
+  const rows = document.getElementById('rows');
+  const row = el('div', { className: 'row' }, rows);
+  el('input', { className: 'name', placeholder: 'receiver name (optional)', value: name || '' }, row);
+  el('input', { className: 'weight', type: 'number', min: '0', step: 'any',
+                placeholder: 'weight', value: weight ?? '' }, row);
+  const rm = el('button', { className: 'icon-btn', textContent: '×', title: 'Remove' }, row);
+  rm.onclick = () => { if (rows.children.length > 2) row.remove(); };
+}
+
+function addPctRow(value) {
+  const rows = document.getElementById('pct-rows');
+  const row = el('div', { className: 'row' }, rows);
+  el('input', { className: 'weight', type: 'number', min: '0', step: 'any',
+                placeholder: 'percent', value: value ?? '' }, row);
+  el('span', { textContent: '%', style: 'color: var(--muted)' }, row);
+  const rm = el('button', { className: 'icon-btn', textContent: '×', title: 'Remove' }, row);
+  rm.onclick = () => { if (rows.children.length > 2) row.remove(); };
+}
+
+async function post(url, payload) {
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await resp.json();
+  if (!resp.ok) throw new Error(data.error || ('HTTP ' + resp.status));
+  return data;
+}
+
+function fmt(n, digits = 2) {
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: digits });
+}
+
+async function calculate() {
+  const errBox = document.getElementById('fwd-error');
+  const resBox = document.getElementById('fwd-result');
+  errBox.classList.add('hidden');
+  const receivers = [];
+  for (const row of document.getElementById('rows').children) {
+    const [name, weight] = row.querySelectorAll('input');
+    if (weight.value === '' && name.value === '') continue;
+    receivers.push({ name: name.value.trim() || undefined, weight: weight.value });
+  }
+  const totalRaw = document.getElementById('total').value;
+  const payload = { receivers };
+  if (totalRaw !== '') payload.total = totalRaw;
+  const unit = document.getElementById('unit').value.trim();
+  if (unit) payload.unit = unit;
+
+  try {
+    const data = await post('/api/calculate', payload);
+    const tbody = document.getElementById('fwd-tbody');
+    tbody.innerHTML = '';
+    const hasLoad = data.total !== null && data.total !== undefined;
+    document.querySelectorAll('.load-col').forEach(c => c.classList.toggle('hidden', !hasLoad));
+    for (const r of data.receivers) {
+      const tr = el('tr', {}, tbody);
+      el('td', { textContent: r.name }, tr);
+      el('td', { className: 'num', textContent: fmt(r.weight, 4) }, tr);
+      el('td', { className: 'num', textContent: fmt(r.percent) + '%' }, tr);
+      if (hasLoad) {
+        el('td', { className: 'num', textContent: fmt(r.load, 4) + (data.unit ? ' ' + data.unit : '') }, tr);
+      } else {
+        el('td', { className: 'num load-col hidden' }, tr);
+      }
+      const barCell = el('td', {}, tr);
+      const bar = el('div', { className: 'bar' }, barCell);
+      el('div', { style: 'width:' + r.percent + '%' }, bar);
+    }
+    const zeros = data.receivers.filter(r => r.weight === 0).map(r => r.name);
+    const note = document.getElementById('fwd-note');
+    note.classList.toggle('hidden', zeros.length === 0);
+    note.textContent = zeros.length
+      ? 'Weight 0 means Cribl opens NO connections to: ' + zeros.join(', ')
+      : '';
+    resBox.classList.remove('hidden');
+  } catch (e) {
+    resBox.classList.add('hidden');
+    errBox.textContent = e.message;
+    errBox.classList.remove('hidden');
+  }
+}
+
+async function fromPercent() {
+  const errBox = document.getElementById('rev-error');
+  const resBox = document.getElementById('rev-result');
+  errBox.classList.add('hidden');
+  const percents = [];
+  for (const row of document.getElementById('pct-rows').children) {
+    const input = row.querySelector('input');
+    if (input.value !== '') percents.push(input.value);
+  }
+  try {
+    const data = await post('/api/from-percent', { percents });
+    document.getElementById('rev-weights').textContent =
+      'Load Weights: ' + data.weights.join(' : ');
+    const note = document.getElementById('rev-note');
+    if (data.approximation) {
+      note.textContent = 'Exact ratio is unwieldy — nearest small ratio: '
+        + data.approximation.weights.join(' : ')
+        + ' (max deviation ' + fmt(data.approximation.max_error_percent, 4) + ' pp)';
+      note.classList.remove('hidden');
+    } else {
+      note.classList.add('hidden');
+    }
+    resBox.classList.remove('hidden');
+  } catch (e) {
+    resBox.classList.add('hidden');
+    errBox.textContent = e.message;
+    errBox.classList.remove('hidden');
+  }
+}
+
+addRow('', 1); addRow('', 2); addRow('', 7);
+addPctRow(25); addPctRow(25); addPctRow(50);
+</script>
+</body>
+</html>

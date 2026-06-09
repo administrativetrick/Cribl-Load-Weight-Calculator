@@ -13,12 +13,13 @@ Weights are relative, not percentages — weights `1, 2, 7` and `10, 20, 70`
 produce the same split. Cribl's own example: 300 events across weights 1, 2, 7
 → `300 / (1+2+7) = 30` events per weight unit → 30 / 60 / 210.
 
-This repo contains two implementations:
+This repo contains three implementations:
 
 | | Where | For |
 |---|---|---|
 | Desktop GUI | [`gui/main.py`](gui/main.py) | Humans who want a windowed calculator |
 | Agent Skill | [`skill/cribl-weight-load-calculator/`](skill/cribl-weight-load-calculator/) | AI agents (Claude Code, OpenAI Codex, Claude.ai) |
+| Web app (Docker) | [`webapp/`](webapp/) + [`compose.yaml`](compose.yaml) | Self-hosting on any Docker host |
 
 ---
 
@@ -101,6 +102,51 @@ python skill/cribl-weight-load-calculator/scripts/cribl_weights.py --from-percen
 python skill/cribl-weight-load-calculator/scripts/cribl_weights.py 1 2 7 --json
 ```
 
+## Web app (`webapp/`) — self-hostable Docker container
+
+A single-page web UI plus JSON API, served by a Python-stdlib-only HTTP server
+(no Flask, no pip installs — the image is just Alpine Python plus three files).
+It imports the **same calculation module the Agent Skill uses**, so all three
+implementations share one source of truth. Runs as a non-root user with a
+built-in container healthcheck.
+
+```bash
+# from the repo root
+docker compose up -d --build
+# → http://localhost:8080
+```
+
+Or without compose:
+
+```bash
+docker build -f webapp/Dockerfile -t cribl-weight-calculator .
+docker run -d --name cribl-weight-calculator -p 8080:8080 --restart unless-stopped cribl-weight-calculator
+```
+
+Change the host port by editing the left side of `ports:` in
+[`compose.yaml`](compose.yaml) (or `-p <host>:8080`). The container port can be
+overridden with the `PORT` environment variable.
+
+The UI has two modes matching the CLI: **Weights → Split** (with optional total
+throughput and unit) and **Split → Weights** (reverse derivation).
+
+### JSON API
+
+```bash
+curl -s -X POST http://localhost:8080/api/calculate \
+  -H 'Content-Type: application/json' \
+  -d '{"receivers":[{"name":"idx1","weight":1},{"name":"idx2","weight":2},{"name":"idx3","weight":7}],"total":300,"unit":"events/sec"}'
+
+curl -s -X POST http://localhost:8080/api/from-percent \
+  -H 'Content-Type: application/json' \
+  -d '{"percents":[25,25,50]}'
+
+curl -s http://localhost:8080/healthz
+```
+
+Run it without Docker: `python webapp/app.py` (uses `PORT` env var,
+default 8080).
+
 ## Repo layout
 
 ```
@@ -109,8 +155,13 @@ python skill/cribl-weight-load-calculator/scripts/cribl_weights.py 1 2 7 --json
 ├── skill/
 │   └── cribl-weight-load-calculator/  # Agent Skill (copy this folder to install)
 │       ├── SKILL.md
-│       ├── scripts/cribl_weights.py
+│       ├── scripts/cribl_weights.py   # shared calculation module + CLI
 │       ├── references/cribl-load-balancing.md
 │       └── evals/evals.json
+├── webapp/
+│   ├── app.py                         # stdlib HTTP server + JSON API
+│   ├── index.html                     # single-page UI
+│   └── Dockerfile
+├── compose.yaml
 └── README.md
 ```
