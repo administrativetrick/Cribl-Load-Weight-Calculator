@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Single source of truth: the web app imports the same module the Agent Skill runs
 COPY skill/cribl-weight-load-calculator/scripts/cribl_weights.py .
-COPY webapp/app.py webapp/index.html ./
+COPY webapp/app.py webapp/index.html webapp/favicon.svg ./
 
 RUN adduser -D -H appuser
 USER appuser

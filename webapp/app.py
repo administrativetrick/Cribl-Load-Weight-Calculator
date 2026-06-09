@@ -34,6 +34,7 @@ except ImportError:
     import cribl_weights
 
 INDEX_HTML = (APP_DIR / "index.html").read_bytes()
+FAVICON_SVG = (APP_DIR / "favicon.svg").read_bytes()
 MAX_BODY = 64 * 1024
 MAX_RECEIVERS = 1000
 
@@ -96,6 +97,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
             self._send(200, INDEX_HTML, "text/html; charset=utf-8")
+        elif self.path in ("/favicon.svg", "/favicon.ico"):
+            self._send(200, FAVICON_SVG, "image/svg+xml")
         elif self.path == "/healthz":
             self._send(200, b'{"status":"ok"}')
         else:
