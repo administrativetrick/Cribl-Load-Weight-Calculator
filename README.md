@@ -163,5 +163,17 @@ default 8080).
 │   ├── index.html                     # single-page UI
 │   └── Dockerfile
 ├── compose.yaml
+├── LICENSE
 └── README.md
 ```
+
+## License
+
+Copyright (C) 2026 James Curtis.
+
+This project is free software, licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later).
+You may use, study, modify, and redistribute it under the terms of that
+license. Note the AGPL's network clause: if you run a modified version of the
+web app as a network service, you must offer its source code to the users of
+that service.

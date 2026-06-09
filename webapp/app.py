@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 James Curtis
 """Cribl Weight Load Calculator — self-hostable web app.
 
 Stdlib-only HTTP server wrapping the same calculation module the Agent

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 James Curtis
 """Cribl Stream load-balancing weight calculator.
 
 Computes the traffic share each load-balanced receiver gets from its
