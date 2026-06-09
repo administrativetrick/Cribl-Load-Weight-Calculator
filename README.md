@@ -132,6 +132,10 @@ environment variable.
 The UI has two modes matching the CLI: **Weights → Split** (with optional total
 throughput and unit) and **Split → Weights** (reverse derivation).
 
+| Weights → Split | Split → Weights |
+|---|---|
+| ![Weights to Split mode showing the traffic share for weights 1, 2, 7](docs/webapp-weights-to-split.png) | ![Split to Weights mode deriving Load Weights 5:5:10:6 from 25/25/50/30](docs/webapp-split-to-weights.png) |
+
 ### JSON API
 
 ```bash
